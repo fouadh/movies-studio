@@ -1,0 +1,14 @@
+{
+  "name": "factory",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "cucumber-js",
+    "test:real-agent": "cucumber-js --profile real-agent"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^13.2.1",
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2"
+  }
+}

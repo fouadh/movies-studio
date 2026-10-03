@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Launcher: runs the TypeScript entry point from wherever this file lives,
+# leaving the caller's working directory alone.
+dir=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
+exec node "$dir/src/main.ts" "$@"

@@ -27,3 +27,7 @@ Skills, in `.agents/skills/` at the repository's root:
 - **implement-fast** — when the student wants you to just build the iteration.
 
 If your harness doesn't load skills, read the skill's `SKILL.md` and follow it.
+
+## Checks
+
+From `factory/`: `npm test` runs the suite (the feature files, leaving out `@real-agent` examples); `npm run test:real-agent` runs only the `@real-agent` examples. If the npm cache isn't writable, add `--cache "$TMPDIR/npm-cache"` to `npm install`.

@@ -75,7 +75,9 @@ function handleKey(data) {
 
 process.on('SIGINT', () => stop('Quit.'));
 process.on('exit', () => {
-  process.stdout.write('\x1b[?25h');
+  if (process.stdout.isTTY) {
+    process.stdout.write('\x1b[?25h');
+  }
 });
 
 if (!process.stdin.isTTY) {

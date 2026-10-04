@@ -6,4 +6,4 @@ Seed: Build a terminal Tetris game started with `npm start`, keeping the full di
 - [x] Implement core Tetris game state: board, pieces, movement, rotation, collision, locking, line clears, scoring, and game over.
 - [x] Implement terminal rendering that fits within 24 rows, including borders, score, controls, and game-over message.
 - [x] Implement keyboard controls and the game loop for interactive play.
-- [ ] Smoke-test `npm start` and adjust behavior/display as needed.
+- [x] Smoke-test `npm start` and adjust behavior/display as needed.

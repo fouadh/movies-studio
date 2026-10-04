@@ -1,0 +1,11 @@
+{
+  "name": "pacman-terminal",
+  "version": "1.0.0",
+  "description": "A terminal Pac-Man game.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

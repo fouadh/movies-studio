@@ -1,0 +1,4 @@
+#!/bin/sh
+# Stand-in for pi: logs that it was called and answers harmlessly.
+echo called >> "$FACTORY_TEST_DIR/pi.log"
+echo '{"complete": true}'

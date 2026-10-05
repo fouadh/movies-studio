@@ -11,6 +11,61 @@ const {
 
 const CLEAR_SCREEN = '\x1b[2J\x1b[H';
 
+function createTerminalIO({ input = process.stdin, output = process.stdout } = {}) {
+  return {
+    input,
+    output,
+    get isInteractive() {
+      return Boolean(input.isTTY);
+    },
+    clearScreen() {
+      output.write(CLEAR_SCREEN);
+    },
+    write(text) {
+      output.write(text);
+    },
+    enableRawMode() {
+      if (input.isTTY && typeof input.setRawMode === 'function') {
+        input.setRawMode(true);
+      }
+    },
+    disableRawMode() {
+      if (input.isTTY && typeof input.setRawMode === 'function') {
+        input.setRawMode(false);
+      }
+    },
+    setEncoding(encoding) {
+      if (typeof input.setEncoding === 'function') {
+        input.setEncoding(encoding);
+      }
+    },
+    resume() {
+      if (typeof input.resume === 'function') {
+        input.resume();
+      }
+    },
+    pause() {
+      if (typeof input.pause === 'function') {
+        input.pause();
+      }
+    },
+    onData(handler) {
+      input.on('data', handler);
+    },
+    offData(handler) {
+      if (typeof input.off === 'function') {
+        input.off('data', handler);
+      } else if (typeof input.removeListener === 'function') {
+        input.removeListener('data', handler);
+      }
+    },
+  };
+}
+
+function terminalFromOptions({ terminal, input, output } = {}) {
+  return terminal || createTerminalIO({ input, output });
+}
+
 function clearScreen(output = process.stdout) {
   output.write(CLEAR_SCREEN);
 }
@@ -48,58 +103,48 @@ function buildDisplay(state = createInitialState()) {
   ].join('\n') + '\n';
 }
 
-function render({ output = process.stdout, state = createInitialState() } = {}) {
-  clearScreen(output);
-  output.write(buildDisplay(state));
+function render({ output, terminal, state = createInitialState() } = {}) {
+  const terminalIO = terminalFromOptions({ terminal, output });
+  terminalIO.clearScreen();
+  terminalIO.write(buildDisplay(state));
 }
 
-function exit({ input = process.stdin, output = process.stdout } = {}) {
-  clearScreen(output);
-  output.write('Thanks for playing Tetris.\n');
-
-  if (input.isTTY && typeof input.setRawMode === 'function') {
-    input.setRawMode(false);
-  }
-
-  if (typeof input.pause === 'function') {
-    input.pause();
-  }
+function exit({ input, output, terminal } = {}) {
+  const terminalIO = terminalFromOptions({ terminal, input, output });
+  terminalIO.clearScreen();
+  terminalIO.write('Thanks for playing Tetris.\n');
+  terminalIO.disableRawMode();
+  terminalIO.pause();
 }
 
 function start({
-  input = process.stdin,
-  output = process.stdout,
+  input,
+  output,
+  terminal,
   state = createInitialState(),
 } = {}) {
-  render({ output, state });
+  const terminalIO = terminalFromOptions({ terminal, input, output });
+  render({ terminal: terminalIO, state });
 
-  if (!input.isTTY) {
+  if (!terminalIO.isInteractive) {
     return () => {};
   }
 
-  if (typeof input.setEncoding === 'function') {
-    input.setEncoding('utf8');
-  }
-  if (typeof input.setRawMode === 'function') {
-    input.setRawMode(true);
-  }
-  if (typeof input.resume === 'function') {
-    input.resume();
-  }
+  terminalIO.setEncoding('utf8');
+  terminalIO.enableRawMode();
+  terminalIO.resume();
 
   const onData = (key) => {
     if (key === 'q' || key === '\u0003') {
-      exit({ input, output });
+      exit({ terminal: terminalIO });
     }
   };
 
-  input.on('data', onData);
+  terminalIO.onData(onData);
 
   return () => {
-    input.off('data', onData);
-    if (input.isTTY && typeof input.setRawMode === 'function') {
-      input.setRawMode(false);
-    }
+    terminalIO.offData(onData);
+    terminalIO.disableRawMode();
   };
 }
 
@@ -113,6 +158,7 @@ module.exports = {
   boardWithActivePiece,
   buildDisplay,
   clearScreen,
+  createTerminalIO,
   exit,
   render,
   start,

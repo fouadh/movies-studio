@@ -62,18 +62,36 @@ function randomPieceType(random = Math.random) {
   return PIECE_TYPES[index];
 }
 
-function createPiece(type, boardWidth = BOARD_WIDTH) {
+function resolvePieceOptions(boardOrOptions = BOARD_WIDTH) {
+  if (typeof boardOrOptions === 'number') {
+    return { boardWidth: boardOrOptions };
+  }
+
+  if (Array.isArray(boardOrOptions)) {
+    return { boardWidth: boardWidth(boardOrOptions) };
+  }
+
+  if (boardOrOptions && Array.isArray(boardOrOptions.board)) {
+    return { ...boardOrOptions, boardWidth: boardWidth(boardOrOptions.board) };
+  }
+
+  return boardOrOptions || {};
+}
+
+function createPiece(type, boardOrOptions = BOARD_WIDTH) {
   if (!TETROMINOES[type]) {
     throw new Error(`Unknown tetromino type: ${type}`);
   }
 
+  const { boardWidth: optionBoardWidth, width, x, y = 0 } = resolvePieceOptions(boardOrOptions);
+  const spawnWidth = optionBoardWidth ?? width ?? BOARD_WIDTH;
   const matrix = cloneMatrix(TETROMINOES[type]);
 
   return {
     type,
     matrix,
-    x: Math.floor((boardWidth - matrix[0].length) / 2),
-    y: 0,
+    x: x === undefined ? Math.floor((spawnWidth - matrix[0].length) / 2) : x,
+    y,
   };
 }
 
@@ -88,9 +106,10 @@ function createInitialState({
   linesCleared = 0,
 } = {}) {
   const clonedBoard = cloneBoard(board);
+  const dimensions = boardDimensions(clonedBoard);
   const activePiece = active
     ? withPiece(active, {})
-    : createPiece(nextType || randomPieceType(random), boardWidth(clonedBoard));
+    : createPiece(nextType || randomPieceType(random), dimensions);
 
   return {
     board: clonedBoard,
@@ -129,9 +148,20 @@ function boardHeight(board) {
   return board.length;
 }
 
-function collides(board, piece) {
+function boardDimensions(board) {
   const width = boardWidth(board);
   const height = boardHeight(board);
+
+  return {
+    width,
+    height,
+    boardWidth: width,
+    boardHeight: height,
+  };
+}
+
+function collides(board, piece) {
+  const { boardWidth: width, boardHeight: height } = boardDimensions(board);
 
   return occupiedCells(piece).some(({ x, y }) => {
     if (x < 0 || x >= width || y >= height) {
@@ -236,7 +266,7 @@ function lockPiece(state) {
 
   const merged = mergePiece(state.board, state.active);
   const { board, cleared } = clearLines(merged);
-  const active = createPiece(randomPieceType(state.random), boardWidth(board));
+  const active = createPiece(randomPieceType(state.random), boardDimensions(board));
   const gameOver = collides(board, active);
 
   return {
@@ -295,6 +325,7 @@ module.exports = {
   randomPieceType,
   boardHeight,
   boardWidth,
+  boardDimensions,
   occupiedCells,
   collides,
   movePiece,

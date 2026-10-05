@@ -57,7 +57,9 @@ function cloneMatrix(matrix) {
 }
 
 function randomPieceType(random = Math.random) {
-  return PIECE_TYPES[Math.floor(random() * PIECE_TYPES.length)];
+  const value = random();
+  const index = Math.min(PIECE_TYPES.length - 1, Math.floor(value * PIECE_TYPES.length));
+  return PIECE_TYPES[index];
 }
 
 function createPiece(type, boardWidth = BOARD_WIDTH) {
@@ -78,18 +80,24 @@ function createPiece(type, boardWidth = BOARD_WIDTH) {
 function createInitialState({
   random = Math.random,
   nextType,
+  active,
   width = BOARD_WIDTH,
   height = BOARD_HEIGHT,
   board = createBoard(width, height),
+  score = 0,
+  linesCleared = 0,
 } = {}) {
-  const active = createPiece(nextType || randomPieceType(random), boardWidth(board));
+  const clonedBoard = cloneBoard(board);
+  const activePiece = active
+    ? withPiece(active, {})
+    : createPiece(nextType || randomPieceType(random), boardWidth(clonedBoard));
 
   return {
-    board: cloneBoard(board),
-    active,
-    score: 0,
-    linesCleared: 0,
-    gameOver: collides(board, active),
+    board: clonedBoard,
+    active: activePiece,
+    score,
+    linesCleared,
+    gameOver: collides(clonedBoard, activePiece),
     random,
   };
 }
@@ -217,6 +225,10 @@ function clearLines(board) {
   };
 }
 
+function scoreForLines(cleared) {
+  return LINE_SCORES[cleared] || 0;
+}
+
 function lockPiece(state) {
   if (state.gameOver) {
     return state;
@@ -231,7 +243,7 @@ function lockPiece(state) {
     ...state,
     board,
     active,
-    score: state.score + LINE_SCORES[cleared],
+    score: state.score + scoreForLines(cleared),
     linesCleared: state.linesCleared + cleared,
     gameOver,
   };
@@ -254,6 +266,24 @@ function hardDrop(state) {
   return lockPiece(current);
 }
 
+function stepGame(state, action) {
+  switch (action) {
+    case 'left':
+      return movePiece(state, -1, 0);
+    case 'right':
+      return movePiece(state, 1, 0);
+    case 'down':
+    case 'tick':
+      return softDrop(state);
+    case 'rotate':
+      return rotatePiece(state);
+    case 'drop':
+      return hardDrop(state);
+    default:
+      return state;
+  }
+}
+
 module.exports = {
   BOARD_HEIGHT,
   BOARD_WIDTH,
@@ -262,14 +292,19 @@ module.exports = {
   createBoard,
   createInitialState,
   createPiece,
+  randomPieceType,
   boardHeight,
   boardWidth,
   occupiedCells,
   collides,
   movePiece,
+  rotateMatrixClockwise,
   rotatePiece,
+  mergePiece,
+  clearLines,
+  scoreForLines,
   softDrop,
   hardDrop,
   lockPiece,
-  clearLines,
+  stepGame,
 };

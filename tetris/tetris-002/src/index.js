@@ -107,10 +107,11 @@ function createTetrisApp({
   input,
   output,
   terminal,
-  state = createInitialState(),
+  state,
+  createState = createInitialState,
 } = {}) {
   const terminalIO = terminalFromOptions({ terminal, input, output });
-  let currentState = state;
+  let currentState = state === undefined ? createState() : state;
   let onData;
 
   const stop = () => {

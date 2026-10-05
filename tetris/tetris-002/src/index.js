@@ -1,28 +1,54 @@
 #!/usr/bin/env node
 
-const BOARD_WIDTH = 10;
-const BOARD_HEIGHT = 20;
+const {
+  BOARD_HEIGHT,
+  BOARD_WIDTH,
+  boardHeight,
+  boardWidth,
+  createInitialState,
+  occupiedCells,
+} = require('./game');
+
 const CLEAR_SCREEN = '\x1b[2J\x1b[H';
 
 function clearScreen(output = process.stdout) {
   output.write(CLEAR_SCREEN);
 }
 
-function buildDisplay({ score = 0 } = {}) {
-  const horizontalBorder = '+' + '-'.repeat(BOARD_WIDTH * 2) + '+';
-  const emptyRow = '|' + ' .'.repeat(BOARD_WIDTH) + '|';
-  const boardRows = Array.from({ length: BOARD_HEIGHT }, () => emptyRow);
+function boardWithActivePiece(state) {
+  const board = state.board.map((row) => row.slice());
+  const width = boardWidth(board);
+  const height = boardHeight(board);
+
+  occupiedCells(state.active).forEach(({ x, y, type }) => {
+    if (y >= 0 && y < height && x >= 0 && x < width) {
+      board[y][x] = type;
+    }
+  });
+
+  return board;
+}
+
+function buildDisplay(state = createInitialState()) {
+  const board = boardWithActivePiece(state);
+  const horizontalBorder = '+' + '-'.repeat(boardWidth(board) * 2) + '+';
+  const boardRows = board.map((row) =>
+    '|' + row.map((cell) => ` ${cell || '.'}`).join('') + '|'
+  );
+  const footer = state.gameOver
+    ? 'Game over. Press q to quit.'
+    : 'Controls: ←/→ move, ↑ rotate, ↓ drop, q quit';
 
   return [
-    `Tetris  Score: ${score}`,
+    `Tetris  Score: ${state.score}`,
     horizontalBorder,
     ...boardRows,
     horizontalBorder,
-    'Controls: ←/→ move, ↑ rotate, ↓ drop, q quit',
+    footer,
   ].join('\n') + '\n';
 }
 
-function render({ output = process.stdout, state = {} } = {}) {
+function render({ output = process.stdout, state = createInitialState() } = {}) {
   clearScreen(output);
   output.write(buildDisplay(state));
 }
@@ -40,8 +66,12 @@ function exit({ input = process.stdin, output = process.stdout } = {}) {
   }
 }
 
-function start({ input = process.stdin, output = process.stdout } = {}) {
-  render({ output });
+function start({
+  input = process.stdin,
+  output = process.stdout,
+  state = createInitialState(),
+} = {}) {
+  render({ output, state });
 
   if (!input.isTTY) {
     return () => {};
@@ -80,6 +110,7 @@ if (require.main === module) {
 module.exports = {
   BOARD_HEIGHT,
   BOARD_WIDTH,
+  boardWithActivePiece,
   buildDisplay,
   clearScreen,
   exit,

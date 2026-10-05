@@ -103,15 +103,28 @@ function buildDisplay(state = createInitialState()) {
   ].join('\n') + '\n';
 }
 
+function resolveInitialState({ state, random, initialStateOptions = {}, createState = createInitialState } = {}) {
+  if (state !== undefined) {
+    return state;
+  }
+
+  return createState({
+    ...initialStateOptions,
+    random: random || initialStateOptions.random,
+  });
+}
+
 function createTetrisApp({
   input,
   output,
   terminal,
   state,
+  random,
+  initialStateOptions,
   createState = createInitialState,
 } = {}) {
   const terminalIO = terminalFromOptions({ terminal, input, output });
-  let currentState = state === undefined ? createState() : state;
+  let currentState = resolveInitialState({ state, random, initialStateOptions, createState });
   let onData;
 
   const stop = () => {
@@ -164,8 +177,8 @@ function createTetrisApp({
   return app;
 }
 
-function render({ output, terminal, state = createInitialState() } = {}) {
-  createTetrisApp({ terminal, output, state }).render();
+function render({ output, terminal, state, random, initialStateOptions, createState } = {}) {
+  createTetrisApp({ terminal, output, state, random, initialStateOptions, createState }).render();
 }
 
 function exit({ input, output, terminal } = {}) {
@@ -190,5 +203,6 @@ module.exports = {
   createTetrisApp,
   exit,
   render,
+  resolveInitialState,
   start,
 };

@@ -7,9 +7,34 @@ const {
   boardWidth,
   createInitialState,
   occupiedCells,
+  stepGame,
 } = require('./game');
 
 const CLEAR_SCREEN = '\x1b[2J\x1b[H';
+const INPUT_ACTIONS = Object.freeze({
+  '\u001b[D': 'left',
+  a: 'left',
+  A: 'left',
+  h: 'left',
+  H: 'left',
+  '\u001b[C': 'right',
+  d: 'right',
+  D: 'right',
+  l: 'right',
+  L: 'right',
+  '\u001b[A': 'rotate',
+  w: 'rotate',
+  W: 'rotate',
+  k: 'rotate',
+  K: 'rotate',
+  '\u001b[B': 'down',
+  s: 'down',
+  S: 'down',
+  j: 'down',
+  J: 'down',
+  ' ': 'drop',
+});
+const QUIT_KEYS = Object.freeze(['q', 'Q', '\u0003']);
 
 function createTerminalIO({ input = process.stdin, output = process.stdout } = {}) {
   return {
@@ -70,6 +95,16 @@ function clearScreen(output = process.stdout) {
   output.write(CLEAR_SCREEN);
 }
 
+function actionForInput(input) {
+  const key = String(input);
+
+  if (QUIT_KEYS.includes(key)) {
+    return 'quit';
+  }
+
+  return INPUT_ACTIONS[key] || null;
+}
+
 function boardWithActivePiece(state) {
   const board = state.board.map((row) => row.slice());
   const width = boardWidth(board);
@@ -92,7 +127,7 @@ function buildDisplay(state = createInitialState()) {
   );
   const footer = state.gameOver
     ? 'Game over. Press q to quit.'
-    : 'Controls: ←/→ move, ↑ rotate, ↓ drop, q quit';
+    : 'Controls: ←/→ move, ↑ rotate, ↓ soft drop, space hard drop, q quit';
 
   return [
     `Tetris  Score: ${state.score}`,
@@ -163,9 +198,18 @@ function createTetrisApp({
       terminalIO.resume();
 
       onData = (key) => {
-        if (key === 'q' || key === '\u0003') {
+        const action = actionForInput(key);
+
+        if (action === 'quit') {
           app.exit();
+          return;
         }
+
+        if (!action) {
+          return;
+        }
+
+        app.render(stepGame(currentState, action));
       };
 
       terminalIO.onData(onData);
@@ -196,6 +240,7 @@ if (require.main === module) {
 module.exports = {
   BOARD_HEIGHT,
   BOARD_WIDTH,
+  actionForInput,
   boardWithActivePiece,
   buildDisplay,
   clearScreen,

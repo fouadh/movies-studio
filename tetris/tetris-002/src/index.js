@@ -103,49 +103,76 @@ function buildDisplay(state = createInitialState()) {
   ].join('\n') + '\n';
 }
 
-function render({ output, terminal, state = createInitialState() } = {}) {
-  const terminalIO = terminalFromOptions({ terminal, output });
-  terminalIO.clearScreen();
-  terminalIO.write(buildDisplay(state));
-}
-
-function exit({ input, output, terminal } = {}) {
-  const terminalIO = terminalFromOptions({ terminal, input, output });
-  terminalIO.clearScreen();
-  terminalIO.write('Thanks for playing Tetris.\n');
-  terminalIO.disableRawMode();
-  terminalIO.pause();
-}
-
-function start({
+function createTetrisApp({
   input,
   output,
   terminal,
   state = createInitialState(),
 } = {}) {
   const terminalIO = terminalFromOptions({ terminal, input, output });
-  render({ terminal: terminalIO, state });
+  let currentState = state;
+  let onData;
 
-  if (!terminalIO.isInteractive) {
-    return () => {};
-  }
-
-  terminalIO.setEncoding('utf8');
-  terminalIO.enableRawMode();
-  terminalIO.resume();
-
-  const onData = (key) => {
-    if (key === 'q' || key === '\u0003') {
-      exit({ terminal: terminalIO });
+  const stop = () => {
+    if (onData) {
+      terminalIO.offData(onData);
+      onData = undefined;
     }
-  };
-
-  terminalIO.onData(onData);
-
-  return () => {
-    terminalIO.offData(onData);
     terminalIO.disableRawMode();
   };
+
+  const app = {
+    get state() {
+      return currentState;
+    },
+    render(nextState = currentState) {
+      currentState = nextState;
+      terminalIO.clearScreen();
+      terminalIO.write(buildDisplay(currentState));
+    },
+    stop,
+    exit() {
+      stop();
+      terminalIO.clearScreen();
+      terminalIO.write('Thanks for playing Tetris.\n');
+      terminalIO.pause();
+    },
+    start() {
+      app.render();
+
+      if (!terminalIO.isInteractive) {
+        return stop;
+      }
+
+      terminalIO.setEncoding('utf8');
+      terminalIO.enableRawMode();
+      terminalIO.resume();
+
+      onData = (key) => {
+        if (key === 'q' || key === '\u0003') {
+          app.exit();
+        }
+      };
+
+      terminalIO.onData(onData);
+
+      return stop;
+    },
+  };
+
+  return app;
+}
+
+function render({ output, terminal, state = createInitialState() } = {}) {
+  createTetrisApp({ terminal, output, state }).render();
+}
+
+function exit({ input, output, terminal } = {}) {
+  createTetrisApp({ terminal, input, output }).exit();
+}
+
+function start(options = {}) {
+  return createTetrisApp(options).start();
 }
 
 if (require.main === module) {
@@ -159,6 +186,7 @@ module.exports = {
   buildDisplay,
   clearScreen,
   createTerminalIO,
+  createTetrisApp,
   exit,
   render,
   start,

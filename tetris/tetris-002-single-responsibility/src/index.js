@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-import { startGame } from './game.js';
+import { runTetrisCli } from './cli.js';
 
-startGame();
+runTetrisCli();

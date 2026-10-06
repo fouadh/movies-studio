@@ -3,7 +3,7 @@ import { bindQuitKeys } from './input.js';
 import { renderGameDisplay } from './renderer.js';
 import { createTerminal } from './terminal.js';
 
-export function startGame({ terminal = createTerminal(), exit = process.exit } = {}) {
+export function startGame({ terminal = createTerminal(), exit = () => {} } = {}) {
   const state = createInitialState();
 
   function render() {

@@ -9,4 +9,4 @@
   - [x] Several core helpers hard-code BOARD_WIDTH/BOARD_HEIGHT despite createBoard/createPiece accepting custom sizes, forcing large 10x20 fixtures and making focused unit tests harder.
 - [x] Build terminal input handling for player controls.
 - [x] Render the complete game display in the terminal, including board, score, controls, borders, and game-over messages.
-- [ ] Ensure the full display stays within 24 terminal rows.
+- [x] Ensure the full display stays within 24 terminal rows.

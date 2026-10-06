@@ -6,4 +6,4 @@
 - [x] Implement Tetris gameplay: falling pieces, movement, rotation, locking, line clears, scoring, and game over.
   - [x] Fix finding: `src/tetrominoes.js` mixes tetromino shape/movement responsibilities with board cell representation via `ACTIVE_CELL` and `LOCKED_CELL`.
 - [x] Keep the entire display within 24 terminal rows.
-- [ ] Add any helpful terminal rendering or input packages if needed.
+- [x] Add any helpful terminal rendering or input packages if needed.

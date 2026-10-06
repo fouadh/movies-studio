@@ -1,6 +1,6 @@
-const CLEAR_SCREEN = '\x1b[2J\x1b[H';
-const HIDE_CURSOR = '\x1b[?25l';
-const SHOW_CURSOR = '\x1b[?25h';
+import { cursorHide, cursorShow, cursorTo, eraseScreen } from 'ansi-escapes';
+
+const CLEAR_SCREEN = `${eraseScreen}${cursorTo(0, 0)}`;
 
 export function createTerminal({ stdin = process.stdin, stdout = process.stdout } = {}) {
   return {
@@ -9,11 +9,11 @@ export function createTerminal({ stdin = process.stdin, stdout = process.stdout 
     },
 
     hideCursor() {
-      stdout.write(HIDE_CURSOR);
+      stdout.write(cursorHide);
     },
 
     showCursor() {
-      stdout.write(SHOW_CURSOR);
+      stdout.write(cursorShow);
     },
 
     draw(screen) {

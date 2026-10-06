@@ -14,7 +14,9 @@ export class FactoryWorld extends World {
   target?: string = 'target';  // relative to repo, or absolute
   unrelatedBefore = '';        // the factory's own changes before the run
   seed?: string = 'seed.md';  // relative to repo, if chosen
-  agent?: string;      // the chosen agent, if any
+  machines: Record<string, string | undefined> = {};  // the harness chosen for each machine, if any
+  attempts?: number;   // the attempt limit per pass, if chosen
+  lens?: string;       // the validator's lens, if chosen
   output = '';         // what the factory printed
   commitsBefore = 0;   // commits in the repo before the last run
   stopped = false;     // whether the factory stopped on its own
@@ -29,7 +31,10 @@ export class FactoryWorld extends World {
     const args = [...extra];
     if (this.target) args.push('--target', this.target);
     if (this.seed) args.push('--seed', this.seed);
-    if (this.agent) args.push('--agent', this.agent);
+    for (const [machine, harness] of Object.entries(this.machines)) if (harness) args.push(`--${machine}`, harness);
+    if (this.attempts) args.push('--attempts', String(this.attempts));
+    if (this.lens) args.push('--lens', this.lens);
+
     const result = spawnSync(join(this.factory, 'factory'), args, {
       cwd: this.repo,
       encoding: 'utf8',
@@ -77,9 +82,9 @@ export class FactoryWorld extends World {
     return log.trim().split('\n').reverse().filter((commit) => this.productFiles(commit).length > 0);
   }
 
-  lastPrompt() {
+  lastPrompt(machine: string) {
     const calls = join(this.dir, 'calls');
-    const last = readdirSync(calls).sort().at(-1)!;
+    const last = readdirSync(calls).filter((file) => file.startsWith(`${machine}-`)).sort().at(-1)!;
     return readFileSync(join(calls, last), 'utf8');
   }
 

@@ -32,10 +32,6 @@ Then('it contains the work for the {word} task', function (this: FactoryWorld, w
   assert.deepEqual(this.productFiles(this.workCommits()[0]), [`${task}.txt`]);
 });
 
-Given('the agent answers in prose, with no result', function (this: FactoryWorld) {
-  writeFileSync(join(this.dir, 'agent-prose'), '');
-});
-
 Then("it reports that it could not read the agent's result", function (this: FactoryWorld) {
   assert.match(this.output, /could not read the agent's result/);
 });

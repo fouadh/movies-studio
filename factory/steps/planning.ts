@@ -18,8 +18,9 @@ Then('it reports that there is no seed', function (this: FactoryWorld) {
 });
 
 Then('no agent has been called', function (this: FactoryWorld) {
-  assert.ok(!existsSync(join(this.dir, 'agent.log')), 'the chosen agent was called');
-  assert.ok(!existsSync(join(this.dir, 'pi.log')), 'pi was called');
+  for (const log of ['planner', 'doer', 'validator', 'pi']) {
+    assert.ok(!existsSync(join(this.dir, `${log}.log`)), `the ${log} was called`);
+  }
 });
 
 Then('there is a plan', function (this: FactoryWorld) {
@@ -56,10 +57,6 @@ Then('the plan is .factory\\/plan.md in the target', function (this: FactoryWorl
 
 Then("there is no plan in the factory's folder", function (this: FactoryWorld) {
   assert.ok(!existsSync(join(this.factory, '.factory', 'plan.md')), "there is a plan in the factory's folder");
-});
-
-Given('the agent keeps its plan in prose', function (this: FactoryWorld) {
-  writeFileSync(join(this.dir, 'agent-prose-plan'), '');
 });
 
 Then('the work for {word} and {word} has been committed', function (this: FactoryWorld, first: string, second: string) {

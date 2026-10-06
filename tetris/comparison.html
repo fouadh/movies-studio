@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tetris: generation 001 vs 002, and two validator lenses</title>
+<style>
+  :root { --ink: #1d2330; --muted: #5b6475; --line: #dde1e8; --bg: #f7f8fa; --find: #e8f3ec; --findline: #2f8a55; --other: #fdf3e3; --otherline: #c27c0e; --warn: #fbe9e9; --warnline: #b33a3a; }
+  * { box-sizing: border-box; }
+  body { font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); margin: 0; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+  p.sub { color: var(--muted); margin: 0 0 24px; }
+  code { font: 0.88em ui-monospace, SFMono-Regular, Menlo, monospace; background: #eceef2; padding: 1px 5px; border-radius: 4px; }
+  pre { font: 12.5px/1.25 ui-monospace, SFMono-Regular, Menlo, monospace; background: #11151c; color: #e6e9ef; padding: 12px 14px; border-radius: 8px; overflow-x: auto; margin: 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 0.94rem; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th { background: #eef0f4; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; margin: 12px 0; }
+  .verdict { border-left: 5px solid var(--findline); }
+  .finding { background: var(--find); border-left: 5px solid var(--findline); }
+  .other { background: var(--other); border-left: 5px solid var(--otherline); }
+  .warn { background: var(--warn); border-left: 5px solid var(--warnline); }
+  .tag { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; margin-right: 6px; vertical-align: 2px; }
+  .tag.f { background: var(--findline); color: #fff; }
+  .tag.o { background: var(--otherline); color: #fff; }
+  .tag.w { background: var(--warnline); color: #fff; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid h3 { margin-top: 0; }
+  ul { margin: 6px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  .muted { color: var(--muted); }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Tetris: generation 001 vs generation 002</h1>
+<p class="sub">All built from the same seed, <code>tetris/spec.md</code>, with <code>pi</code>. Generation 001 used the one-agent factory. Generation 002 used the three-machine factory, whose validator's lens was <strong>testability</strong>. The <a href="#bonus">bonus round</a> rebuilds generation 002 with the lens changed to <strong>single responsibility</strong>.</p>
+
+<div class="card verdict">
+  <strong>Verdict.</strong> Validation made a visible difference to the code's <em>structure</em>, and none to what the player gets.
+  <ul>
+    <li><strong>Findings recorded:</strong> the validator raised 5 testability findings. All 5 were recorded in the plan as subtasks, and each one maps to a later commit that changed the code in the direction the finding asked for.</li>
+    <li><strong>What changed:</strong> generation 002 exports its pieces, takes its terminal and starting state as inputs, and keeps the game logic pure.</li>
+    <li><strong>What didn't:</strong> neither generation has a single test.</li>
+    <li><strong>The biggest player-visible difference is unrelated to validation:</strong> in 002, pieces never fall on their own. Its plan never had a task for the game loop.</li>
+  </ul>
+</div>
+
+<h2>At a glance</h2>
+<table>
+  <tr><th></th><th>Generation 001</th><th>Generation 002</th></tr>
+  <tr><td>Factory</td><td>One agent per pass</td><td>Planner, doer, validator (lens: testability)</td></tr>
+  <tr><td>Plan tasks</td><td>5</td><td>5, plus 5 subtasks from validator findings</td></tr>
+  <tr><td>Work commits</td><td>6 (plan included in passes)</td><td>10, plus 12 plan-only commits</td></tr>
+  <tr><td>Source lines</td><td>404 in <code>game.js</code>, <code>render.js</code>, <code>index.js</code></td><td>630 in <code>game.js</code>, <code>index.js</code></td></tr>
+  <tr><td>Module system</td><td>ES modules (<code>"type": "module"</code>)</td><td>CommonJS (<code>require</code>)</td></tr>
+  <tr><td>Game model</td><td>Mutable <code>TetrisGame</code> class</td><td>Pure functions over state: <code>stepGame(state, action)</code></td></tr>
+  <tr><td>Gravity (pieces fall over time)</td><td>Yes, every 700 ms</td><td><strong>No.</strong> A <code>'tick'</code> action exists but nothing triggers it.</td></tr>
+  <tr><td>Display height</td><td>24 rows, trimmed with <code>slice(0, 24)</code></td><td>22 rows, enforced by <code>assertDisplayFitsTerminal</code></td></tr>
+  <tr><td>Tests</td><td>None</td><td>None</td></tr>
+</table>
+
+<h2>Differences supported by recorded validator findings</h2>
+<p>Every finding below is quoted from <code>tetris/tetris-002/.factory/plan.md</code>. The trace shows the pass that recorded each finding, the pass that addressed it, and the plan commit that marked it done.</p>
+
+<div class="card finding">
+  <span class="tag f">Finding 1</span><strong>"<code>src/index.js</code> auto-starts on import and exports nothing, preventing side-effect-free unit tests."</strong>
+  <p class="muted">Recorded under task 1 in <code>5814279</code>. Addressed in <code>656ddaf</code>, marked done in <code>8ea4101</code>.</p>
+  <ul>
+    <li><strong>001:</strong> <code>index.js</code> runs the game at module level (<code>const game = new TetrisGame()</code>, <code>setRawMode</code>, <code>setInterval</code>) and exports nothing.</li>
+    <li><strong>002:</strong> starts only under <code>if (require.main === module)</code>, and exports 12 functions and 3 constants, including <code>buildDisplay</code>, <code>actionForInput</code> and <code>createTetrisApp</code>.</li>
+  </ul>
+</div>
+
+<div class="card finding">
+  <span class="tag f">Finding 2</span><strong>"Terminal I/O is hard-coded to process.stdin/stdout instead of injectable streams, making behavior difficult to test."</strong>
+  <p class="muted">Recorded under task 1 in <code>5814279</code>. Addressed in <code>56e3635</code>, marked done in <code>f9a645e</code>.</p>
+  <ul>
+    <li><strong>001:</strong> writes straight to <code>process.stdout</code> and reads <code>process.stdin</code> throughout.</li>
+    <li><strong>002:</strong> <code>createTerminalIO({ input, output })</code> wraps the streams, and <code>createTetrisApp({ terminal, input, output, ... })</code> accepts a fake terminal.</li>
+  </ul>
+</div>
+
+<div class="card finding">
+  <span class="tag f">Finding 3</span><strong>"Render and exit behavior are not exposed as isolated units, so output and cleanup cannot be tested directly."</strong>
+  <p class="muted">Recorded under task 1 in <code>5814279</code>. Addressed in <code>b1b1dac</code>, marked done in <code>1d8e960</code>.</p>
+  <ul>
+    <li><strong>001:</strong> <code>draw()</code> and <code>stop()</code> are private to <code>index.js</code>. Rendering is already separate in <code>render.js</code>, unprompted.</li>
+    <li><strong>002:</strong> <code>render()</code>, <code>exit()</code>, <code>app.stop()</code> and <code>buildDisplay(state)</code> are exported, and <code>buildDisplay</code> returns a string with no I/O.</li>
+  </ul>
+</div>
+
+<div class="card finding">
+  <span class="tag f">Finding 4</span><strong>"start() creates a random initial state internally with no injection point, making startup rendering tests nondeterministic."</strong>
+  <p class="muted">Recorded under task 2 in <code>656ddaf</code>. Addressed in <code>3b333a2</code>, marked done in <code>acb7eb7</code>.</p>
+  <ul>
+    <li><strong>001:</strong> <code>new TetrisGame({ random })</code> already accepts a random source, but <code>index.js</code> never passes one.</li>
+    <li><strong>002:</strong> <code>resolveInitialState({ state, random, initialStateOptions, createState })</code> lets a caller fix the starting state or the randomness.</li>
+  </ul>
+</div>
+
+<div class="card finding">
+  <span class="tag f">Finding 5</span><strong>"Several core helpers hard-code BOARD_WIDTH/BOARD_HEIGHT despite createBoard/createPiece accepting custom sizes, forcing large 10x20 fixtures and making focused unit tests harder."</strong>
+  <p class="muted">Recorded under task 2 in <code>656ddaf</code>. Addressed in <code>1f1f49d</code>, marked done in <code>641a604</code>.</p>
+  <ul>
+    <li><strong>001:</strong> the class keeps <code>this.width</code> and <code>this.height</code> from its constructor, so small boards already work.</li>
+    <li><strong>002:</strong> helpers now read sizes from the board itself, through <code>boardWidth(board)</code>, <code>boardHeight(board)</code> and <code>boardDimensions(board)</code>.</li>
+  </ul>
+</div>
+
+<h3>How the findings flowed through the factory</h3>
+<ul>
+  <li><strong>Findings became their own passes.</strong> The doer recorded each finding as a subtask, but the passes that recorded them didn't fix them. The planner then marked the parent task done while its subtasks were still open, for example task 1 in <code>c526660</code>. Later passes picked the open subtasks up as "the first thing not done", one per pass. That's why generation 002 took 10 work passes for 5 tasks.</li>
+  <li><strong>The plan stayed tidy.</strong> No finding became a new top-level task, as <code>validation.feature</code> requires.</li>
+  <li><strong>Findings arrived early, then stopped.</strong> All 5 were raised on the first two tasks: setup and core game state. Tasks 3 to 5 (input, rendering, the 24-row limit) produced none. Either later work was more testable, or the validator found nothing new to say through this lens.</li>
+</ul>
+
+<h2>Differences with no recorded finding behind them</h2>
+<p>Two builds from the same seed differ anyway. Nothing in generation 002's plan explains these differences.</p>
+
+<div class="card warn">
+  <span class="tag w">Gameplay</span><strong>No gravity in 002.</strong>
+  Pieces only move when you press a key, so the game never speeds up or puts you under time pressure. <code>stepGame</code> handles a <code>'tick'</code> action, but <code>index.js</code> has no timer, and the history shows it never had one. The cause is in the plan, not the validator. Generation 001's plan had <em>"Implement keyboard controls and the game loop for interactive play"</em>, and generation 002's plan has no game-loop task. A testability lens wouldn't catch a missing feature.
+</div>
+
+<div class="card other">
+  <span class="tag o">Architecture</span>Generation 001 is an ES-module, class-based design with a separate <code>render.js</code>. Generation 002 is CommonJS with pure state-transition functions and everything else in one large <code>index.js</code> (289 lines). The pure <code>stepGame</code> reducer is easy to test, but no finding asked for it: it was written in the core game pass (<code>656ddaf</code>), before any finding about <code>game.js</code> existed.
+</div>
+
+<div class="card other">
+  <span class="tag o">Game rules</span>
+  <ul>
+    <li><strong>Randomizer:</strong> 001 draws pieces from a "7-bag", the standard shuffle of all seven pieces. 002 picks each piece uniformly at random, so droughts and repeats are possible.</li>
+    <li><strong>Level:</strong> 001 shows one; 002 has none.</li>
+    <li><strong>Scoring:</strong> both use 100, 300, 500 and 800 points for 1 to 4 lines.</li>
+  </ul>
+</div>
+
+<div class="card other">
+  <span class="tag o">Display and controls</span>
+  <ul>
+    <li><strong>Look:</strong> 001 draws coloured <code>██</code> blocks inside box-drawing borders, with the status above the board and a one-line control strip below. 002 draws piece letters on a dotted ASCII grid, with a side panel for score and controls.</li>
+    <li><strong>Keys:</strong> 002 adds vim keys (<code>h j k l</code>). 001 also rotates on <code>x</code>.</li>
+    <li><strong>Game over:</strong> 001 exits with a message. 002 shows <code>GAME OVER</code> in the panel and waits for <code>q</code>.</li>
+  </ul>
+</div>
+
+<div class="card other">
+  <span class="tag o">24-row limit</span>Both fit, in different ways:
+  <ul>
+    <li>001 trims its output to exactly 24 lines.</li>
+    <li>002 lays the panel beside the board for 22 lines and throws an error if a display would be taller. Its last task also added <code>.npmrc</code> with <code>loglevel=silent</code>, so npm's own banner doesn't take terminal rows.</li>
+  </ul>
+  These changes come from the seed's 24-row rule, not from a finding.
+</div>
+
+<h2>Start-up screens</h2>
+<p class="muted">The first frame each game prints when started without a terminal (<code>node src/index.js &lt; /dev/null</code>), with colour codes stripped.</p>
+<div class="grid">
+<div>
+<h3>Generation 001 (24 rows)</h3>
+<pre>Score:0 Lines:0 Level:1
+┌────────────────────┐
+│        ██          │
+│        ██████      │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+│                    │
+└────────────────────┘
+←/→ move  ↑/x rotate  ↓ drop  space hard  q quit</pre>
+</div>
+<div>
+<h3>Generation 002 (22 rows)</h3>
+<pre>+--------------------+
+| . . . . T . . . . .|  Tetris
+| . . . T T T . . . .|  Score: 0
+| . . . . . . . . . .|  Lines: 0
+| . . . . . . . . . .|
+| . . . . . . . . . .|  Controls:
+| . . . . . . . . . .|  ←/a/h: left
+| . . . . . . . . . .|  →/d/l: right
+| . . . . . . . . . .|  ↑/w/k: rotate
+| . . . . . . . . . .|  ↓/s/j: drop
+| . . . . . . . . . .|  space: hard
+| . . . . . . . . . .|  q: quit
+| . . . . . . . . . .|
+| . . . . . . . . . .|
+| . . . . . . . . . .|
+| . . . . . . . . . .|
+| . . . . . . . . . .|
+| . . . . . . . . . .|
+| . . . . . . . . . .|
+| . . . . . . . . . .|
+| . . . . . . . . . .|
++--------------------+</pre>
+</div>
+</div>
+
+<h2 id="bonus">Bonus round: changing the lens</h2>
+<p>The same seed, model and factory, built into <code>tetris/tetris-002-single-responsibility</code> with the validator's lens set to single responsibility. The comparison is with <code>tetris/tetris-002</code>, the testability build.</p>
+
+<div class="card verdict">
+  <strong>Verdict.</strong> Changing the lens changed what the validator complained about, and the code's shape followed.
+  <ul>
+    <li><strong>Testability</strong> asked for seams: exports, injectable I/O, a controllable starting state. The result was one big but injectable <code>index.js</code> of 289 lines.</li>
+    <li><strong>Single responsibility</strong> asked for splits. The result was 10 small modules, the largest being <code>gameplay.js</code> at 135 lines.</li>
+    <li><strong>Both lenses converged on similar seams.</strong> The single-responsibility build also ended up with an injectable terminal and a pure gameplay module, without being asked.</li>
+    <li><strong>Fewer findings.</strong> The new lens raised 2 findings instead of 5, and the build took 7 passes instead of 10.</li>
+  </ul>
+</div>
+
+<h3>The plans</h3>
+<table>
+  <tr><th></th><th>Testability (<code>tetris-002</code>)</th><th>Single responsibility</th></tr>
+  <tr><td>Top-level tasks</td><td>5: setup, core game state, input, render, 24 rows</td><td>5: setup, render, gameplay ("falling pieces, …"), 24 rows, "add any helpful terminal … packages if needed"</td></tr>
+  <tr><td>Findings recorded as subtasks</td><td>5, on setup (3) and core game state (2)</td><td>2, on setup (1) and gameplay (1)</td></tr>
+  <tr><td>Work passes</td><td>10</td><td>7</td></tr>
+  <tr><td>Fixed in the pass that raised them?</td><td>No. Each finding took a later pass of its own.</td><td>Mostly. Both findings describe code that no commit contains, so most of each fix happened in that pass's retries. A small follow-up pass finished each one.</td></tr>
+</table>
+<p class="muted">The planner never sees the lens. The two task lists differ the way any two plans from the same seed can. The second one happens to say "falling pieces", which is why that build has gravity and <code>tetris-002</code> does not.</p>
+
+<h3>Differences supported by recorded findings</h3>
+
+<div class="card finding">
+  <span class="tag f">Finding 1</span><strong>"<code>src/index.js</code> has multiple responsibilities: board creation, display rendering, terminal I/O, input handling, and process lifecycle are all coupled in one module."</strong>
+  <p class="muted">Recorded under task 1 in <code>67b3f01</code>, where the split was already done. Follow-up in <code>dc1f152</code>, marked done in <code>6cc09e5</code>.</p>
+  <ul>
+    <li><strong>The pass that raised it</strong> commits <code>index.js</code> at 5 lines, next to separate <code>board.js</code>, <code>game.js</code>, <code>input.js</code>, <code>renderer.js</code> and <code>terminal.js</code>. The coupled <code>index.js</code> the finding describes only existed in an attempt that was never committed.</li>
+    <li><strong>The follow-up</strong> added <code>cli.js</code> (<code>runTetrisCli({ terminal, exit })</code>) and took <code>process.exit</code> out of <code>game.js</code>. The process lifecycle now lives in one place.</li>
+    <li><strong>Contrast:</strong> under testability, <code>index.js</code> stayed the home of terminal I/O, input, rendering and the app lifecycle, at 289 lines.</li>
+  </ul>
+</div>
+
+<div class="card finding">
+  <span class="tag f">Finding 2</span><strong>"<code>src/tetrominoes.js</code> mixes tetromino shape/movement responsibilities with board cell representation via <code>ACTIVE_CELL</code> and <code>LOCKED_CELL</code>."</strong>
+  <p class="muted">Recorded under the gameplay task in <code>ea8a078</code>. Follow-up in <code>a2ffde0</code>, marked done in <code>09b7d8d</code>.</p>
+  <ul>
+    <li><strong>The pass that raised it</strong> commits the cell constants in <code>board.js</code>, not <code>tetrominoes.js</code>. They had already moved once during the retries.</li>
+    <li><strong>The follow-up</strong> moved them again, into their own <code>cells.js</code>, and changed their values from glyphs (<code>'#'</code>) to names (<code>'active'</code>, <code>'locked'</code>). The renderer now maps names to glyphs, so how a cell looks belongs to the renderer alone.</li>
+    <li><strong>Contrast:</strong> the testability build stores piece letters such as <code>'T'</code> in the board and prints them directly.</li>
+  </ul>
+</div>
+
+<h3>Differences with no recorded finding behind them</h3>
+<div class="card other">
+  <span class="tag o">Code and gameplay</span>
+  <ul>
+    <li><strong>Structure:</strong> 10 ES modules totalling 458 lines, against 2 CommonJS files totalling 630.</li>
+    <li><strong>Gameplay:</strong> pieces fall every 500 ms. The plan asked for "falling pieces"; the testability build has no gravity.</li>
+    <li><strong>A dependency:</strong> <code>ansi-escapes</code>, from the "add any helpful packages" task.</li>
+    <li><strong>Display:</strong> one character per cell (<code>#</code>), a 10-column board, and score and controls below it, for 24 rows when played. The renderer trims the board if needed.</li>
+    <li><strong>Fewer keys:</strong> arrows and <code>w a s d</code>, with no vim keys and no capitals.</li>
+    <li><strong>Still no tests</strong>, as in both earlier generations.</li>
+  </ul>
+</div>
+<div class="card warn">
+  <span class="tag w">Factory</span>The last pass (<code>91fb079</code>) committed <code>node_modules/</code>, because the target has no <code>.gitignore</code> and the factory commits everything in the target. That's a rough edge in the factory, not a lens effect.
+</div>
+
+<h3>Start-up screen</h3>
+<p class="muted">Its first frame when started without a terminal, which adds a "Run in a terminal to play." line. In a real terminal the display is 24 rows.</p>
+<pre>+----------+
+|    ##    |
+|   ##     |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
+|          |
++----------+
+Score: 0  Lines: 0
+Controls: ←/→ move  ↓ drop  ↑ rotate  q quit</pre>
+
+<h2>Caveats</h2>
+<ul>
+  <li><strong>One build each.</strong> Some of the "other" differences would change on a rebuild with the same factory and lens. The plans already differ between the two validated builds, and the lens can't explain that.</li>
+  <li><strong>Testable is not tested.</strong> The findings are about seams: injection, exports and pure functions. Nobody asked for tests, so none were written. Testability improved on paper only.</li>
+  <li><strong>Missing evidence.</strong> The factory doesn't keep the validator's raw answers or how many attempts each pass took. The plan's subtasks are the only record of findings.</li>
+</ul>
+
+</main>
+</body>
+</html>

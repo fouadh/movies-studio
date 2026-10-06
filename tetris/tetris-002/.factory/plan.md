@@ -8,5 +8,5 @@
   - [x] start() creates a random initial state internally with no injection point, making startup rendering tests nondeterministic.
   - [x] Several core helpers hard-code BOARD_WIDTH/BOARD_HEIGHT despite createBoard/createPiece accepting custom sizes, forcing large 10x20 fixtures and making focused unit tests harder.
 - [x] Build terminal input handling for player controls.
-- [ ] Render the complete game display in the terminal, including board, score, controls, borders, and game-over messages.
+- [x] Render the complete game display in the terminal, including board, score, controls, borders, and game-over messages.
 - [ ] Ensure the full display stays within 24 terminal rows.

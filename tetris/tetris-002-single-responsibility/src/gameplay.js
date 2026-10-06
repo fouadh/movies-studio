@@ -1,12 +1,11 @@
 import {
-  ACTIVE_CELL,
-  LOCKED_CELL,
   clearCompletedLines,
   cloneBoard,
   createEmptyBoard,
   isCellEmpty,
   isInsideBoard,
 } from './board.js';
+import { ACTIVE_CELL, LOCKED_CELL } from './cells.js';
 import {
   createRandomPiece,
   getPieceCells,

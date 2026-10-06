@@ -1,8 +1,9 @@
+import { EMPTY_CELL } from './cells.js';
+
+export { EMPTY_CELL } from './cells.js';
+
 export const BOARD_WIDTH = 10;
 export const BOARD_HEIGHT = 20;
-export const EMPTY_CELL = ' ';
-export const ACTIVE_CELL = '#';
-export const LOCKED_CELL = '#';
 
 export function createEmptyBoard({
   width = BOARD_WIDTH,

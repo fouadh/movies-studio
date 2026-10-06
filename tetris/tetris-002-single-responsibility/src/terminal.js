@@ -18,7 +18,7 @@ export function createTerminal({ stdin = process.stdin, stdout = process.stdout 
 
     draw(screen) {
       stdout.write(CLEAR_SCREEN);
-      stdout.write(`${screen}\n`);
+      stdout.write(screen);
     },
 
     write(message) {

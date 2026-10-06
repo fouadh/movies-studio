@@ -43,7 +43,7 @@ export function startGame({ terminal = createTerminal(), exit = () => {} } = {})
   render();
 
   if (!terminal.isInteractive()) {
-    terminal.write('Run in a terminal to play.\n');
+    terminal.write('\nRun in a terminal to play.\n');
     terminal.showCursor();
     return;
   }

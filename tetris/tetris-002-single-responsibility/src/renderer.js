@@ -6,6 +6,8 @@ const CELL_GLYPHS = {
 };
 const CONTROLS_TEXT = 'Controls: ←/→ move  ↓ drop  ↑ rotate  q quit';
 const GAME_OVER_TEXT = 'GAME OVER';
+const MAX_DISPLAY_ROWS = 24;
+const NON_BOARD_ROWS = 4;
 
 export function renderGameDisplay({
   board,
@@ -14,9 +16,11 @@ export function renderGameDisplay({
   gameOver = false,
   status = '',
 }) {
-  const width = board[0]?.length ?? 0;
+  const visibleBoardHeight = Math.max(0, MAX_DISPLAY_ROWS - NON_BOARD_ROWS);
+  const visibleBoard = board.slice(-visibleBoardHeight);
+  const width = visibleBoard[0]?.length ?? board[0]?.length ?? 0;
   const border = `+${'-'.repeat(width)}+`;
-  const boardRows = board.map((row) => `|${row.map(renderCell).join('')}|`);
+  const boardRows = visibleBoard.map((row) => `|${row.map(renderCell).join('')}|`);
   const message = gameOver ? GAME_OVER_TEXT : status;
   const messageText = message ? `  ${message}` : '';
 

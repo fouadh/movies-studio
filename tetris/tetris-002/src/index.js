@@ -11,6 +11,8 @@ const {
 } = require('./game');
 
 const CLEAR_SCREEN = '\x1b[2J\x1b[H';
+const MAX_DISPLAY_ROWS = 24;
+const DISPLAY_BORDER_ROWS = 2;
 const INPUT_ACTIONS = Object.freeze({
   '\u001b[D': 'left',
   a: 'left',
@@ -119,8 +121,28 @@ function boardWithActivePiece(state) {
   return board;
 }
 
+function countDisplayRows(display) {
+  return display.replace(/\n$/, '').split('\n').length;
+}
+
+function assertDisplayFitsTerminal(display, maxRows = MAX_DISPLAY_ROWS) {
+  const rows = countDisplayRows(display);
+
+  if (rows > maxRows) {
+    throw new Error(`Tetris display is ${rows} rows tall; it must fit within ${maxRows} terminal rows.`);
+  }
+}
+
 function buildDisplay(state = createInitialState()) {
   const board = boardWithActivePiece(state);
+  const boardRowsAllowed = MAX_DISPLAY_ROWS - DISPLAY_BORDER_ROWS;
+
+  if (boardHeight(board) > boardRowsAllowed) {
+    throw new Error(
+      `Tetris board is ${boardHeight(board)} rows tall; it must be ${boardRowsAllowed} rows or fewer to fit within ${MAX_DISPLAY_ROWS} terminal rows.`
+    );
+  }
+
   const horizontalBorder = '+' + '-'.repeat(boardWidth(board) * 2) + '+';
   const panel = [
     'Tetris',
@@ -144,7 +166,9 @@ function buildDisplay(state = createInitialState()) {
     return `|${cells}|${sideText}`;
   });
 
-  return [horizontalBorder, ...boardRows, horizontalBorder].join('\n') + '\n';
+  const display = [horizontalBorder, ...boardRows, horizontalBorder].join('\n') + '\n';
+  assertDisplayFitsTerminal(display);
+  return display;
 }
 
 function resolveInitialState({ state, random, initialStateOptions = {}, createState = createInitialState } = {}) {
@@ -249,10 +273,13 @@ if (require.main === module) {
 module.exports = {
   BOARD_HEIGHT,
   BOARD_WIDTH,
+  MAX_DISPLAY_ROWS,
   actionForInput,
+  assertDisplayFitsTerminal,
   boardWithActivePiece,
   buildDisplay,
   clearScreen,
+  countDisplayRows,
   createTerminalIO,
   createTetrisApp,
   exit,

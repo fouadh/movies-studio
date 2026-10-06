@@ -1,16 +1,39 @@
-import { createEmptyBoard } from './board.js';
-import { bindQuitKeys } from './input.js';
+import {
+  createInitialState,
+  getVisibleBoard,
+  hardDrop,
+  moveActivePiece,
+  rotateActivePiece,
+  tick,
+} from './gameplay.js';
+import { bindGameKeys } from './input.js';
 import { renderGameDisplay } from './renderer.js';
 import { createTerminal } from './terminal.js';
 
+const FALL_INTERVAL_MS = 500;
+
 export function startGame({ terminal = createTerminal(), exit = () => {} } = {}) {
-  const state = createInitialState();
+  let state = createInitialState();
+  let fallTimer;
 
   function render() {
-    terminal.draw(renderGameDisplay(state));
+    terminal.draw(renderGameDisplay({ ...state, board: getVisibleBoard(state) }));
+  }
+
+  function update(nextState) {
+    state = nextState;
+    render();
+
+    if (state.gameOver && fallTimer) {
+      clearInterval(fallTimer);
+      fallTimer = undefined;
+    }
   }
 
   function quit() {
+    if (fallTimer) {
+      clearInterval(fallTimer);
+    }
     terminal.disableRawInput();
     terminal.showCursor();
     exit(0);
@@ -26,13 +49,14 @@ export function startGame({ terminal = createTerminal(), exit = () => {} } = {})
   }
 
   terminal.enableRawInput();
-  bindQuitKeys(terminal, quit);
-}
+  bindGameKeys(terminal, {
+    quit,
+    moveLeft: () => update(moveActivePiece(state, 'left')),
+    moveRight: () => update(moveActivePiece(state, 'right')),
+    softDrop: () => update(tick(state)),
+    hardDrop: () => update(hardDrop(state)),
+    rotate: () => update(rotateActivePiece(state)),
+  });
 
-function createInitialState() {
-  return {
-    board: createEmptyBoard(),
-    score: 0,
-    lines: 0,
-  };
+  fallTimer = setInterval(() => update(tick(state)), FALL_INTERVAL_MS);
 }

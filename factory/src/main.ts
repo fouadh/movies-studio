@@ -32,7 +32,8 @@ const seed = resolve(values.seed!);
 const plan = join(target, '.factory', 'plan.md');
 
 const doPrompt = (findings: string[]) => `The seed is ${seed}. The plan is ${plan}.
-Pick the first task in the plan that isn't done and implement it in real code in the current folder. Don't mark it done.` +
+Pick the first task in the plan that isn't done and implement it in real code in the current folder. Don't mark it done.
+Keep a .gitignore in the current folder that lists anything installed or generated, such as dependencies and build output, so that only source files are committed.` +
   (findings.length ? `\nYour last attempt at it was checked, and these findings came back. Record each one in the plan as a subtask of that task, not as a new task, then fix them:\n- ${findings.join('\n- ')}` : '');
 
 const donePrompt = `The plan is ${plan}. The work for its first task that isn't done has just been committed: mark that task done, and do nothing else.

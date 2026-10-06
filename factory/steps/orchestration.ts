@@ -1,5 +1,3 @@
-import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { Given, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
 import type { FactoryWorld } from './workspace.ts';
@@ -30,8 +28,4 @@ Then('there are three new work commits', function (this: FactoryWorld) {
 Then('it contains the work for the {word} task', function (this: FactoryWorld, which: string) {
   const task = this.tasks()[ordinal[which]];
   assert.deepEqual(this.productFiles(this.workCommits()[0]), [`${task}.txt`]);
-});
-
-Then("it reports that it could not read the agent's result", function (this: FactoryWorld) {
-  assert.match(this.output, /could not read the agent's result/);
 });

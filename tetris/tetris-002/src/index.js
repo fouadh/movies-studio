@@ -122,20 +122,29 @@ function boardWithActivePiece(state) {
 function buildDisplay(state = createInitialState()) {
   const board = boardWithActivePiece(state);
   const horizontalBorder = '+' + '-'.repeat(boardWidth(board) * 2) + '+';
-  const boardRows = board.map((row) =>
-    '|' + row.map((cell) => ` ${cell || '.'}`).join('') + '|'
-  );
-  const footer = state.gameOver
-    ? 'Game over. Press q to quit.'
-    : 'Controls: ←/→ move, ↑ rotate, ↓ soft drop, space hard drop, q quit';
+  const panel = [
+    'Tetris',
+    `Score: ${state.score}`,
+    `Lines: ${state.linesCleared}`,
+    '',
+    'Controls:',
+    '←/a/h: left',
+    '→/d/l: right',
+    '↑/w/k: rotate',
+    '↓/s/j: drop',
+    'space: hard',
+    'q: quit',
+    '',
+    state.gameOver ? 'GAME OVER' : '',
+    state.gameOver ? 'Press q to quit' : '',
+  ];
+  const boardRows = board.map((row, index) => {
+    const cells = row.map((cell) => ` ${cell || '.'}`).join('');
+    const sideText = panel[index] ? `  ${panel[index]}` : '';
+    return `|${cells}|${sideText}`;
+  });
 
-  return [
-    `Tetris  Score: ${state.score}`,
-    horizontalBorder,
-    ...boardRows,
-    horizontalBorder,
-    footer,
-  ].join('\n') + '\n';
+  return [horizontalBorder, ...boardRows, horizontalBorder].join('\n') + '\n';
 }
 
 function resolveInitialState({ state, random, initialStateOptions = {}, createState = createInitialState } = {}) {
